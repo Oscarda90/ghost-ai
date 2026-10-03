@@ -1,0 +1,21 @@
+- generic [active] [ref=f2e1]:
+  - generic [ref=f2e2]:
+    - banner [ref=f2e3]:
+      - button "Open sidebar" [ref=f2e5]
+    - complementary [aria-hidden] [ref=f2e6]:
+      - generic [ref=f2e7]:
+        - heading [level=2] [ref=f2e8]: Projects
+        - button [ref=f2e9]
+      - generic [ref=f2e10]:
+        - tablist [ref=f2e11]:
+          - tab [selected] [ref=f2e12]: My Projects
+          - tab [ref=f2e13]: Shared
+        - tabpanel [ref=f2e14]:
+          - generic [ref=f2e15]:
+            - paragraph [ref=f2e18]: No projects yet
+            - paragraph [ref=f2e19]: Projects you create will appear here.
+      - button [ref=f2e21]: New Project
+    - main [ref=f2e22]:
+      - paragraph [ref=f2e28]: No project open
+      - paragraph [ref=f2e29]: Open the sidebar to select or create a project.
+  - button "Open Next.js Dev Tools" [ref=f2e35] [cursor=pointer]

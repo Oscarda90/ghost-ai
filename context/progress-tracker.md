@@ -4,11 +4,24 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Editor chrome
+- Authentication
 
 ## Current Goal
 
-- Implement `context/feature-specs/02-editor.md`: editor navbar, floating project sidebar shell, and reusable dialog pattern.
+- Implement `context/feature-specs/03-auth.md`: Clerk provider, auth pages, redirects, route protection, user menu.
+
+## In Progress
+
+- Auth (03-auth.md):
+  - [x] Install `@clerk/ui`
+  - [x] Wrap root layout with `ClerkProvider` using Clerk `dark` theme, appearance variables mapped to app CSS vars (`lib/clerk-appearance.ts`)
+  - [x] Sign-in / sign-up pages (`app/sign-in/[[...sign-in]]`, `app/sign-up/[[...sign-up]]`) via shared `components/auth/auth-shell.tsx` — two-panel on `lg+` (logo, tagline, text feature list | centered Clerk form), form-only below
+  - [x] `proxy.ts` at root — public routes from `NEXT_PUBLIC_CLERK_SIGN_IN_URL` / `NEXT_PUBLIC_CLERK_SIGN_UP_URL`, everything else protected
+  - [x] `/` redirects: authed → `/editor`, unauthed → `/sign-in`
+  - [x] `UserButton` in editor navbar right section
+  - [x] Verify: no hardcoded colors in auth pages, `tsc`, `eslint`, `npm run build` pass; `next start` confirms `/`, `/editor` → 307 `/sign-in`, `/sign-in` + `/sign-up` → 200
+  - [x] Auth UI refresh (per user reference screenshot): 50/50 split, left panel `bg-bg-surface` with logo top / headline + description + 3 icon+title+description features / copyright footer; right `bg-bg-base` with centered Clerk form. Clerk `colorBorder` (too dark → invisible at Clerk's 7% alpha) replaced with `colorNeutral: var(--text-primary)` so borders/dividers render. Fonts verified Geist (app + Clerk).
+  - [x] `/editor` route: `app/editor/page.tsx` (server) renders `components/editor/editor-workspace.tsx` (client; owns sidebar open state) — navbar + floating project sidebar + center "No project open" empty state. Verified signed in (Clerk dev sign-in token): sign-in → `/editor`, `/` → `/editor`, `UserButton` renders, sidebar toggles.
 
 ## Completed
 
@@ -19,7 +32,7 @@ Update this file whenever the current phase, active feature, or implementation s
   - [x] `components/editor/project-sidebar.tsx` — fixed floating overlay (no content push), slides in from left, `isOpen`/`onClose` props, `Projects` header + close button, Tabs (My Projects / Shared) with empty states, full-width `New Project` button with `Plus` icon
   - [x] Dialog pattern — `components/editor/editor-dialog.tsx` (`EditorDialog`): token-styled wrapper over shadcn Dialog with `title`, `description`, `footer` actions (no actual dialogs yet)
   - [x] Verify: no TypeScript errors, no lint errors
-  - [ ] Not yet mounted in any route — navbar/sidebar wiring lands with the editor workspace page
+  - [x] Mounted in `/editor` via `EditorWorkspace`
 
 ## Next Up
 
@@ -27,12 +40,13 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Open Questions
 
-- Add unresolved product or implementation questions here.
+- `.env.local` had only the Clerk keys; `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in` and `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up` (Clerk's standard var names) were added so the proxy can read public routes from env. Confirm these match the Clerk dashboard / deploy env.
 
 ## Architecture Decisions
 
 - shadcn/ui installed with the `radix-nova` preset (current shadcn CLI major version defaults to a Base UI-based preset; Radix was chosen to match this project's existing conventions). `lib/utils.ts` re-exports `cn` from the official `cn` package (shadcn's new recommended clsx+tailwind-merge replacement) rather than a hand-written implementation.
 - Editor chrome components live in `components/editor/`. Sidebar is `position: fixed` below the navbar (`top-17`) and hidden via translate + `inert` when closed. Dialogs compose shadcn primitives through `EditorDialog` rather than editing `components/ui/dialog.tsx`.
+- Auth: protected-first `clerkMiddleware` in root `proxy.ts` (Next 16 convention). Clerk appearance = `dark` theme + `variables` set to `var(--token)` from `globals.css`; defined once in `lib/clerk-appearance.ts` and passed to `ClerkProvider`. Clerk components otherwise left default.
 - App is dark-only: theme tokens live in `:root`/`.dark` (kept identical) in `app/globals.css`, and `<html>` carries a permanent `dark` class rather than a toggle.
 
 ## Session Notes
