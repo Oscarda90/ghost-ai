@@ -1,0 +1,11 @@
+- generic [active] [ref=f2e1]:
+  - main [ref=f2e2]:
+    - generic [ref=f2e4]:
+      - generic [ref=f2e5]: Ghost AI
+      - paragraph [ref=f2e9]: Collaborative system design, drafted by AI.
+      - list [ref=f2e10]:
+        - listitem [ref=f2e11]: Describe a system in plain English
+        - listitem [ref=f2e13]: AI maps it onto a shared canvas
+        - listitem [ref=f2e15]: Refine the architecture with collaborators
+        - listitem [ref=f2e17]: Generate a Markdown technical spec
+  - button "Open Next.js Dev Tools" [ref=f2e25] [cursor=pointer]
