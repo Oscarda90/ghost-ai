@@ -4,13 +4,22 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Project dialogs
+- Prisma data layer
 
 ## Current Goal
 
-- Implement `context/feature-specs/04-project-dialogs.md`: editor home screen, Create/Rename/Delete project dialogs, sidebar project actions. Mock data only, no API/persistence.
+- Implement `context/feature-specs/05-prisma.md`: `Project` / `ProjectCollaborator` models, cached Prisma client singleton, first migration.
 
 ## In Progress
+
+- Prisma (05-prisma.md):
+  - [x] `prisma/models/project.prisma`: `Project` (ownerId → Clerk user, name, optional description, `ProjectStatus` enum `DRAFT`/`ARCHIVED`, `canvasJsonPath`, timestamps, indexes on ownerId + createdAt)
+  - [x] `ProjectCollaborator` (project relation w/ cascade delete, email, createdAt, unique project/email, indexes on email + project/createdAt)
+  - [x] `lib/prisma.ts`: cached singleton; `prisma+postgres://` → Accelerate (Prisma 7 native `accelerateUrl` option, no extension pkg), else `@prisma/adapter-pg`; cached on `globalThis` outside production
+  - [x] First migration `prisma/migrations/20261004154920_init` applied; client generated to `app/generated/prisma` (gitignored)
+  - [x] Verify: `prisma validate`, `tsc --noEmit`, `eslint`, `npm run build` pass
+
+## Completed
 
 - Project dialogs (04-project-dialogs.md):
   - [x] Editor home (`components/editor/editor-home.tsx`): centered heading, description, `New Project` button (`Plus`), no cards; opens Create dialog
@@ -22,8 +31,6 @@ Update this file whenever the current phase, active feature, or implementation s
   - [x] Dedicated hook `hooks/use-project-dialogs.ts`: dialog state (type + target project), form state (name, slug preview, canSubmit), loading state (simulated 400ms delay); mutations applied to in-memory mock list only
   - [x] Wiring: home New Project → Create, sidebar create → Create, sidebar rename → Rename, sidebar delete → Delete (in `EditorWorkspace`)
   - [x] Verify: `tsc --noEmit`, `eslint .` pass; `slugify` sanity-checked. Not yet verified in browser (needs signed-in session).
-
-## Completed
 
 - Auth (03-auth.md):
   - [x] Install `@clerk/ui`
@@ -51,6 +58,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Open Questions
 
+- Generated Prisma client is gitignored and `migrate dev` (v7) doesn't auto-generate; fresh clones/CI need `prisma generate` before build (e.g. `postinstall` script) — not added since spec forbids extras.
 - `.env.local` had only the Clerk keys; `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in` and `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up` (Clerk's standard var names) were added so the proxy can read public routes from env. Confirm these match the Clerk dashboard / deploy env.
 
 ## Architecture Decisions
@@ -59,6 +67,7 @@ Update this file whenever the current phase, active feature, or implementation s
 - Editor chrome components live in `components/editor/`. Sidebar is `position: fixed` below the navbar (`top-17`) and hidden via translate + `inert` when closed. Dialogs compose shadcn primitives through `EditorDialog` rather than editing `components/ui/dialog.tsx`.
 - Auth: protected-first `clerkMiddleware` in root `proxy.ts` (Next 16 convention). Clerk appearance = `dark` theme + `variables` set to `var(--token)` from `globals.css`; defined once in `lib/clerk-appearance.ts` and passed to `ClerkProvider`. Clerk components otherwise left default.
 - Project dialogs: state lives in `hooks/use-project-dialogs.ts` (also holds the in-memory mock project list until API exists); dialog components are presentational and compose `EditorDialog`. Closing keeps the target project in state so dialog text doesn't flash empty during exit animation. Project shape in `types/project.ts` (`role: "owner" | "collaborator"` drives action visibility).
+- Prisma 7: multi-file schema (`prisma.config.ts` → `prisma/`), models in `prisma/models/*.prisma`, generator `prisma-client` → `app/generated/prisma` (import from `@/app/generated/prisma/client`). DB access only via `prisma` from `lib/prisma.ts`. IDs are `cuid()`; `ownerId` stores Clerk user ID (no User table).
 - App is dark-only: theme tokens live in `:root`/`.dark` (kept identical) in `app/globals.css`, and `<html>` carries a permanent `dark` class rather than a toggle.
 
 ## Session Notes
