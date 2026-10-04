@@ -8,11 +8,23 @@ import { EditorHome } from "@/components/editor/editor-home";
 import { EditorNavbar } from "@/components/editor/editor-navbar";
 import { ProjectSidebar } from "@/components/editor/project-sidebar";
 import { RenameProjectDialog } from "@/components/editor/rename-project-dialog";
-import { useProjectDialogs } from "@/hooks/use-project-dialogs";
+import { useProjectActions } from "@/hooks/use-project-actions";
+import type { Project } from "@/types/project";
 
-export function EditorWorkspace() {
+interface EditorWorkspaceProps {
+  ownedProjects: Project[];
+  sharedProjects: Project[];
+  /** Workspace currently open; omitted on the editor home. */
+  activeProject?: Project;
+}
+
+export function EditorWorkspace({
+  ownedProjects,
+  sharedProjects,
+  activeProject,
+}: EditorWorkspaceProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const projectDialogs = useProjectDialogs();
+  const projectDialogs = useProjectActions(activeProject?.id);
   const { dialog } = projectDialogs;
 
   function handleOpenChange(open: boolean) {
@@ -29,23 +41,31 @@ export function EditorWorkspace() {
       <ProjectSidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
-        ownedProjects={projectDialogs.ownedProjects}
-        sharedProjects={projectDialogs.sharedProjects}
+        ownedProjects={ownedProjects}
+        sharedProjects={sharedProjects}
         onCreateProject={projectDialogs.openCreate}
         onRenameProject={projectDialogs.openRename}
         onDeleteProject={projectDialogs.openDelete}
       />
 
-      <EditorHome onCreateProject={projectDialogs.openCreate} />
+      {activeProject ? (
+        <main className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
+          <h1 className="text-2xl font-semibold text-copy-primary">{activeProject.name}</h1>
+          <p className="font-mono text-xs text-copy-faint">{activeProject.id}</p>
+        </main>
+      ) : (
+        <EditorHome onCreateProject={projectDialogs.openCreate} />
+      )}
 
       <CreateProjectDialog
         open={dialog.type === "create"}
         onOpenChange={handleOpenChange}
         name={projectDialogs.name}
         onNameChange={projectDialogs.setName}
-        slugPreview={projectDialogs.slugPreview}
+        roomIdPreview={projectDialogs.roomIdPreview}
         isSubmitting={projectDialogs.isSubmitting}
         canSubmit={projectDialogs.canSubmit}
+        error={projectDialogs.error}
         onSubmit={projectDialogs.submit}
       />
       <RenameProjectDialog
@@ -56,6 +76,7 @@ export function EditorWorkspace() {
         onNameChange={projectDialogs.setName}
         isSubmitting={projectDialogs.isSubmitting}
         canSubmit={projectDialogs.canSubmit}
+        error={projectDialogs.error}
         onSubmit={projectDialogs.submit}
       />
       <DeleteProjectDialog
@@ -63,6 +84,7 @@ export function EditorWorkspace() {
         onOpenChange={handleOpenChange}
         projectName={dialog.project?.name ?? ""}
         isSubmitting={projectDialogs.isSubmitting}
+        error={projectDialogs.error}
         onConfirm={projectDialogs.submit}
       />
     </div>

@@ -10,6 +10,7 @@ interface DeleteProjectDialogProps {
   onOpenChange: (open: boolean) => void;
   projectName: string;
   isSubmitting: boolean;
+  error: string | null;
   onConfirm: () => void;
 }
 
@@ -18,6 +19,7 @@ export function DeleteProjectDialog({
   onOpenChange,
   projectName,
   isSubmitting,
+  error,
   onConfirm,
 }: DeleteProjectDialogProps) {
   return (
@@ -47,6 +49,8 @@ export function DeleteProjectDialog({
           </Button>
         </>
       }
-    />
+    >
+      {error && <p className="text-xs text-state-error">{error}</p>}
+    </EditorDialog>
   );
 }

@@ -17,6 +17,7 @@ interface RenameProjectDialogProps {
   onNameChange: (name: string) => void;
   isSubmitting: boolean;
   canSubmit: boolean;
+  error: string | null;
   onSubmit: () => void;
 }
 
@@ -28,6 +29,7 @@ export function RenameProjectDialog({
   onNameChange,
   isSubmitting,
   canSubmit,
+  error,
   onSubmit,
 }: RenameProjectDialogProps) {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -72,6 +74,7 @@ export function RenameProjectDialog({
           disabled={isSubmitting}
           className="rounded-xl"
         />
+        {error && <p className="text-xs text-state-error">{error}</p>}
       </form>
     </EditorDialog>
   );

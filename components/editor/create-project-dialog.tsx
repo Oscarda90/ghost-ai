@@ -14,9 +14,10 @@ interface CreateProjectDialogProps {
   onOpenChange: (open: boolean) => void;
   name: string;
   onNameChange: (name: string) => void;
-  slugPreview: string;
+  roomIdPreview: string;
   isSubmitting: boolean;
   canSubmit: boolean;
+  error: string | null;
   onSubmit: () => void;
 }
 
@@ -25,9 +26,10 @@ export function CreateProjectDialog({
   onOpenChange,
   name,
   onNameChange,
-  slugPreview,
+  roomIdPreview,
   isSubmitting,
   canSubmit,
+  error,
   onSubmit,
 }: CreateProjectDialogProps) {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -73,9 +75,9 @@ export function CreateProjectDialog({
           className="rounded-xl"
         />
         <p className="text-xs text-copy-muted">
-          Slug:{" "}
-          <span className="font-mono text-copy-secondary">{slugPreview || "your-project-slug"}</span>
+          Room ID: <span className="font-mono text-copy-secondary">{roomIdPreview}</span>
         </p>
+        {error && <p className="text-xs text-state-error">{error}</p>}
       </form>
     </EditorDialog>
   );

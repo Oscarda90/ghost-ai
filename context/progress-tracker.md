@@ -4,13 +4,37 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Prisma data layer
+- Wire editor home to project API
 
 ## Current Goal
 
-- Implement `context/feature-specs/05-prisma.md`: `Project` / `ProjectCollaborator` models, cached Prisma client singleton, first migration.
+- Implement `context/feature-specs/07-wire-editor-home.md`: server-fetched owned/shared projects in sidebar; create/rename/delete dialogs call real API.
 
 ## In Progress
+
+- Wire editor home (07-wire-editor-home.md):
+  - [x] Server data helper `lib/projects.ts`: `getUserProjects` (owned by Clerk ID + shared via collaborator email match on any of the user's Clerk emails, newest first), `getAccessibleProject` (owner or collaborator, else null). Spec said "existing" helper — none existed, so created.
+  - [x] `/editor` page is a server component: fetch owned + shared server-side, pass to sidebar (no client fetch on initial load)
+  - [x] `hooks/use-project-actions.ts`: dialog state + mutations + error state (replaced `use-project-dialogs.ts`; `lib/mock-projects.ts` removed)
+  - [x] Create: name input, 6-char random suffix (generated on dialog open), room ID = `slugify(name)-suffix` (`untitled-project-suffix` if slug empty), `POST /api/projects` with `{ id, name }`, `router.push('/editor/[id]')` (project ID === Liveblocks room ID)
+  - [x] `POST /api/projects` accepts optional `id` (lowercase hyphenated slug, ≤100 chars, `parseCreateId`); falls back to cuid; duplicate → `409` (`conflict()`)
+  - [x] Rename: store target id + current name, `PATCH /api/projects/[id]`, `router.refresh()`
+  - [x] Delete: store target, `DELETE /api/projects/[id]`, `router.push('/editor')` if active workspace else `router.refresh()`
+  - [x] Wiring: create shows room ID preview, rename pre-fills name, delete shows project name; API errors shown inline in dialogs
+  - [x] Minimal workspace route `app/editor/[projectId]/page.tsx` (server): access check → `notFound()`, renders `EditorWorkspace` with `activeProject` (center placeholder = name + room ID; canvas not built yet). Sidebar items link to `/editor/[id]` and show room ID instead of slug (`Project.slug` removed).
+  - [x] `npm run build`, `tsc --noEmit`, `eslint .` pass. Not verified in browser (needs signed-in session): create→navigate, rename refresh, delete refresh/redirect untested at runtime.
+
+## Completed
+
+- Project APIs (06-project-apis.md):
+  - [x] `GET /api/projects` (`app/api/projects/route.ts`) — list current user's owned projects, newest first → `{ projects }`
+  - [x] `POST /api/projects` — create; `ownerId` = Clerk user ID; missing/blank name → `Untitled Project`; cuid IDs (schema default) → `201 { project }`
+  - [x] `PATCH /api/projects/[projectId]` — rename (owner only), non-blank `name` required → `{ project }`
+  - [x] `DELETE /api/projects/[projectId]` — delete (owner only) → `204`
+  - [x] Unauthenticated → `401`; non-owner mutation → `403`; missing project → `404`; bad body → `400`. Errors shaped `{ error }` (`lib/api-response.ts`)
+  - [x] Shared modules: `lib/project-input.ts` (body/name parsing), `lib/project-access.ts` (`assertProjectOwner`)
+  - [x] Proxy skips `auth.protect()` for `/api(.*)` (it returns 404 for unauthenticated non-page requests); handlers enforce auth via `auth()`
+  - [x] Verify: `npm run build`, `tsc --noEmit`, `eslint` pass; `next start` confirms all 4 routes → `401 {"error":"Unauthorized"}` unauthenticated, `/editor` still 307. Authenticated/403 paths not exercised at runtime (needs signed-in session).
 
 - Prisma (05-prisma.md):
   - [x] `prisma/models/project.prisma`: `Project` (ownerId → Clerk user, name, optional description, `ProjectStatus` enum `DRAFT`/`ARCHIVED`, `canvasJsonPath`, timestamps, indexes on ownerId + createdAt)
@@ -18,8 +42,6 @@ Update this file whenever the current phase, active feature, or implementation s
   - [x] `lib/prisma.ts`: cached singleton; `prisma+postgres://` → Accelerate (Prisma 7 native `accelerateUrl` option, no extension pkg), else `@prisma/adapter-pg`; cached on `globalThis` outside production
   - [x] First migration `prisma/migrations/20261004154920_init` applied; client generated to `app/generated/prisma` (gitignored)
   - [x] Verify: `prisma validate`, `tsc --noEmit`, `eslint`, `npm run build` pass
-
-## Completed
 
 - Project dialogs (04-project-dialogs.md):
   - [x] Editor home (`components/editor/editor-home.tsx`): centered heading, description, `New Project` button (`Plus`), no cards; opens Create dialog
@@ -58,6 +80,9 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Open Questions
 
+- `/editor/[projectId]` workspace content undefined in specs; currently placeholder (name + room ID) so create navigation has a target. Replace when canvas/workspace spec lands.
+- Rename changes only the name; project/room ID keeps the original slug.
+
 - Generated Prisma client is gitignored and `migrate dev` (v7) doesn't auto-generate; fresh clones/CI need `prisma generate` before build (e.g. `postinstall` script) — not added since spec forbids extras.
 - `.env.local` had only the Clerk keys; `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in` and `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up` (Clerk's standard var names) were added so the proxy can read public routes from env. Confirm these match the Clerk dashboard / deploy env.
 
@@ -68,6 +93,8 @@ Update this file whenever the current phase, active feature, or implementation s
 - Auth: protected-first `clerkMiddleware` in root `proxy.ts` (Next 16 convention). Clerk appearance = `dark` theme + `variables` set to `var(--token)` from `globals.css`; defined once in `lib/clerk-appearance.ts` and passed to `ClerkProvider`. Clerk components otherwise left default.
 - Project dialogs: state lives in `hooks/use-project-dialogs.ts` (also holds the in-memory mock project list until API exists); dialog components are presentational and compose `EditorDialog`. Closing keeps the target project in state so dialog text doesn't flash empty during exit animation. Project shape in `types/project.ts` (`role: "owner" | "collaborator"` drives action visibility).
 - Prisma 7: multi-file schema (`prisma.config.ts` → `prisma/`), models in `prisma/models/*.prisma`, generator `prisma-client` → `app/generated/prisma` (import from `@/app/generated/prisma/client`). DB access only via `prisma` from `lib/prisma.ts`. IDs are `cuid()`; `ownerId` stores Clerk user ID (no User table).
+- API auth: `proxy.ts` does not protect `/api(.*)`; every route handler calls Clerk `auth()` and returns `401` JSON itself. Ownership checked via `lib/project-access.ts` before mutations (`404` missing, `403` non-owner). Response shapes: `{ project }`, `{ projects }`, `{ error }`, `204` on delete.
+- Project ID = Liveblocks room ID: client generates `slugify(name)-<6-char suffix>` and sends it as `id` to `POST /api/projects`. Project lists are read server-side via `lib/projects.ts` and passed as props; client mutations call the API then `router.refresh()`/`push()` (no client-side project store).
 - App is dark-only: theme tokens live in `:root`/`.dark` (kept identical) in `app/globals.css`, and `<html>` carries a permanent `dark` class rather than a toggle.
 
 ## Session Notes
