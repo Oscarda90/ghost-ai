@@ -4,7 +4,10 @@
       "Bash(npx tsc *)",
       "Bash(npx eslint *)",
       "Bash(npx next *)",
-      "mcp__plugin_playwright_playwright__browser_console_messages"
+      "mcp__plugin_playwright_playwright__browser_console_messages",
+      "PowerShell($p = \\(Get-NetTCPConnection -LocalPort 3457 -State Listen -ErrorAction SilentlyContinue\\).OwningProcess; if \\($p\\) { Stop-Process -Id $p -Force -Confirm:$false }; \"stopped\")",
+      "Bash(git reset *)",
+      "Bash(npm run *)"
     ]
   }
 }

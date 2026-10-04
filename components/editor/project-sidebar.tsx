@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { FolderOpen, Pencil, Plus, Trash2, Users, X } from "lucide-react";
 
@@ -120,10 +121,10 @@ function ProjectList({ projects, onRename, onDelete }: ProjectListProps) {
           key={project.id}
           className="group flex items-center gap-2 rounded-xl px-3 py-2 transition-colors hover:bg-bg-elevated"
         >
-          <div className="min-w-0 flex-1">
+          <Link href={`/editor/${project.id}`} className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-copy-primary">{project.name}</p>
-            <p className="truncate font-mono text-xs text-copy-faint">{project.slug}</p>
-          </div>
+            <p className="truncate font-mono text-xs text-copy-faint">{project.id}</p>
+          </Link>
 
           {project.role === "owner" && onRename && onDelete && (
             <div className="flex shrink-0 items-center gap-0.5 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
