@@ -14,6 +14,8 @@ interface ProjectSidebarProps {
   onClose: () => void;
   ownedProjects: Project[];
   sharedProjects: Project[];
+  /** Room currently open; highlighted in the list. */
+  activeProjectId?: string;
   onCreateProject: () => void;
   onRenameProject: (project: Project) => void;
   onDeleteProject: (project: Project) => void;
@@ -24,10 +26,15 @@ export function ProjectSidebar({
   onClose,
   ownedProjects,
   sharedProjects,
+  activeProjectId,
   onCreateProject,
   onRenameProject,
   onDeleteProject,
 }: ProjectSidebarProps) {
+  const isShared = sharedProjects.some(
+    (project) => project.id === activeProjectId,
+  );
+
   return (
     <>
       {/* Mobile-only scrim: tapping outside the sidebar closes it. */}
@@ -36,7 +43,7 @@ export function ProjectSidebar({
         onClick={onClose}
         className={cn(
           "fixed inset-0 z-30 bg-bg-base/60 backdrop-blur-sm transition-opacity duration-200 md:hidden",
-          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
+          isOpen ? "opacity-100" : "pointer-events-none opacity-0",
         )}
       />
 
@@ -46,7 +53,7 @@ export function ProjectSidebar({
         inert={!isOpen}
         className={cn(
           "fixed top-17 bottom-3 left-3 z-40 flex w-72 flex-col rounded-2xl border border-surface-border bg-bg-surface/90 shadow-2xl backdrop-blur-md transition-transform duration-200 ease-out",
-          isOpen ? "translate-x-0" : "-translate-x-[calc(100%+1rem)]"
+          isOpen ? "translate-x-0" : "-translate-x-[calc(100%+1rem)]",
         )}
       >
         <div className="flex items-center justify-between px-4 pt-4 pb-3">
@@ -62,7 +69,10 @@ export function ProjectSidebar({
           </Button>
         </div>
 
-        <Tabs defaultValue="my-projects" className="min-h-0 flex-1 px-4">
+        <Tabs
+          defaultValue={isShared ? "shared" : "my-projects"}
+          className="min-h-0 flex-1 px-4"
+        >
           <TabsList className="w-full">
             <TabsTrigger value="my-projects">My Projects</TabsTrigger>
             <TabsTrigger value="shared">Shared</TabsTrigger>
@@ -71,6 +81,7 @@ export function ProjectSidebar({
             {ownedProjects.length > 0 ? (
               <ProjectList
                 projects={ownedProjects}
+                activeProjectId={activeProjectId}
                 onRename={onRenameProject}
                 onDelete={onDeleteProject}
               />
@@ -84,7 +95,10 @@ export function ProjectSidebar({
           </TabsContent>
           <TabsContent value="shared" className="min-h-0 overflow-y-auto">
             {sharedProjects.length > 0 ? (
-              <ProjectList projects={sharedProjects} />
+              <ProjectList
+                projects={sharedProjects}
+                activeProjectId={activeProjectId}
+              />
             ) : (
               <SidebarEmptyState
                 icon={Users}
@@ -96,7 +110,11 @@ export function ProjectSidebar({
         </Tabs>
 
         <div className="border-t border-surface-border p-4">
-          <Button className="w-full rounded-xl" size="lg" onClick={onCreateProject}>
+          <Button
+            className="w-full rounded-xl"
+            size="lg"
+            onClick={onCreateProject}
+          >
             <Plus className="h-4 w-4" />
             New Project
           </Button>
@@ -108,48 +126,69 @@ export function ProjectSidebar({
 
 interface ProjectListProps {
   projects: Project[];
+  activeProjectId?: string;
   /** Rename/delete actions render only when handlers are provided (owned projects). */
   onRename?: (project: Project) => void;
   onDelete?: (project: Project) => void;
 }
 
-function ProjectList({ projects, onRename, onDelete }: ProjectListProps) {
+function ProjectList({
+  projects,
+  activeProjectId,
+  onRename,
+  onDelete,
+}: ProjectListProps) {
   return (
     <ul className="flex flex-col gap-1 py-2">
-      {projects.map((project) => (
-        <li
-          key={project.id}
-          className="group flex items-center gap-2 rounded-xl px-3 py-2 transition-colors hover:bg-bg-elevated"
-        >
-          <Link href={`/editor/${project.id}`} className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-copy-primary">{project.name}</p>
-            <p className="truncate font-mono text-xs text-copy-faint">{project.id}</p>
-          </Link>
+      {projects.map((project) => {
+        const isActive = project.id === activeProjectId;
 
-          {project.role === "owner" && onRename && onDelete && (
-            <div className="flex shrink-0 items-center gap-0.5 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => onRename(project)}
-                aria-label={`Rename ${project.name}`}
-                className="rounded-xl text-copy-muted hover:text-copy-primary"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => onDelete(project)}
-                aria-label={`Delete ${project.name}`}
-                className="rounded-xl text-copy-muted hover:text-state-error"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          )}
-        </li>
-      ))}
+        return (
+          <li
+            key={project.id}
+            className={cn(
+              "group flex items-center gap-2 rounded-xl border px-3 py-2 transition-colors hover:bg-bg-elevated",
+              isActive ? "border-brand/40 bg-accent-dim" : "border-transparent",
+            )}
+          >
+            <Link
+              href={`/editor/${project.id}`}
+              aria-current={isActive ? "page" : undefined}
+              className="min-w-0 flex-1"
+            >
+              <p className="truncate text-sm font-medium text-copy-primary">
+                {project.name}
+              </p>
+              <p className="truncate font-mono text-xs text-copy-faint">
+                {project.id}
+              </p>
+            </Link>
+
+            {project.role === "owner" && onRename && onDelete && (
+              <div className="flex shrink-0 items-center gap-0.5 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={() => onRename(project)}
+                  aria-label={`Rename ${project.name}`}
+                  className="rounded-xl text-copy-muted hover:text-copy-primary"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={() => onDelete(project)}
+                  aria-label={`Delete ${project.name}`}
+                  className="rounded-xl text-copy-muted hover:text-state-error"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -160,7 +199,11 @@ interface SidebarEmptyStateProps {
   description: string;
 }
 
-function SidebarEmptyState({ icon: Icon, title, description }: SidebarEmptyStateProps) {
+function SidebarEmptyState({
+  icon: Icon,
+  title,
+  description,
+}: SidebarEmptyStateProps) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-2 px-4 py-12 text-center">
       <Icon className="h-8 w-8 text-copy-faint" />

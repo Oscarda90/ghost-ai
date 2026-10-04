@@ -7,7 +7,18 @@
       "mcp__plugin_playwright_playwright__browser_console_messages",
       "PowerShell($p = \\(Get-NetTCPConnection -LocalPort 3457 -State Listen -ErrorAction SilentlyContinue\\).OwningProcess; if \\($p\\) { Stop-Process -Id $p -Force -Confirm:$false }; \"stopped\")",
       "Bash(git reset *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "PowerShell(Get-ChildItem -Recurse -File app/editor, components/editor, lib, hooks, types, app/api | Select-Object -ExpandProperty FullName | ForEach-Object { $_.Replace\\(\\(Get-Location\\).Path + '\\\\', ''\\) })",
+      "PowerShell(npx prettier --write components/editor/project-sidebar.tsx components/editor/ai-sidebar.tsx lib/project-access.ts 2>&1)",
+      "PowerShell(npx tsc --noEmit)",
+      "PowerShell(npx eslint .)",
+      "PowerShell(npm run build 2>&1)",
+      "PowerShell(Get-ChildItem -Recurse -File app/api, lib, types, hooks, components/editor, prisma/models | ForEach-Object { Resolve-Path -Relative $_.FullName })",
+      "PowerShell(Get-Content next.config.ts; \\(Get-Content node_modules/@clerk/nextjs/package.json | ConvertFrom-Json\\).version; \\(Get-Content node_modules/@clerk/backend/package.json | ConvertFrom-Json\\).version; Select-String -Path node_modules/@clerk/backend/dist/api/endpoints/UserApi.d.ts -Pattern \"emailAddress|getUserList\" | Select-Object -First 8)",
+      "PowerShell(npx tsc --noEmit; \"TSC EXIT $LASTEXITCODE\"; npx eslint .; \"ESLINT EXIT $LASTEXITCODE\")",
+      "PowerShell(npx tsc --noEmit; \"TSC EXIT $LASTEXITCODE\"; npx eslint .; \"ESLINT EXIT $LASTEXITCODE\"; npm run build 2>&1 | Select-Object -Last 30; \"BUILD EXIT $LASTEXITCODE\")",
+      "PowerShell($p = Start-Process npx -ArgumentList \"next\",\"start\",\"-p\",\"3123\" -PassThru -WindowStyle Hidden; Start-Sleep 8; foreach \\($m in \"GET\",\"POST\"\\) { try { Invoke-WebRequest -Uri http://localhost:3123/api/projects/x/collaborators -Method $m -ContentType \"application/json\" -Body $\\(if\\($m -eq \"POST\"\\){'{\"email\":\"a@b.co\"}'}else{$null}\\) } catch { \"$m $\\($_.Exception.Response.StatusCode.value__\\) $\\($_.ErrorDetails.Message\\)\" } }; try { Invoke-WebRequest -Uri http://localhost:3123/api/projects/x/collaborators/y -Method DELETE } catch { \"DELETE $\\($_.Exception.Response.StatusCode.value__\\) $\\($_.ErrorDetails.Message\\)\" }; Stop-Process -Id $p.Id -Force; Get-NetTCPConnection -LocalPort 3123 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force })",
+      "PowerShell($p = Start-Process cmd.exe -ArgumentList \"/c\",\"npx next start -p 3123\" -PassThru -WindowStyle Hidden; Start-Sleep 10; foreach \\($m in \"GET\",\"POST\"\\) { try { Invoke-WebRequest -Uri http://localhost:3123/api/projects/x/collaborators -Method $m -ContentType \"application/json\" -Body $\\(if\\($m -eq \"POST\"\\){'{\"email\":\"a@b.co\"}'}else{$null}\\) } catch { \"$m $\\($_.Exception.Response.StatusCode.value__\\) $\\($_.ErrorDetails.Message\\)\" } }; try { Invoke-WebRequest -Uri http://localhost:3123/api/projects/x/collaborators/y -Method DELETE } catch { \"DELETE $\\($_.Exception.Response.StatusCode.value__\\) $\\($_.ErrorDetails.Message\\)\" }; Get-NetTCPConnection -LocalPort 3123 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }; Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue)"
     ]
   }
 }

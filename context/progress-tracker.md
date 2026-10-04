@@ -4,13 +4,30 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Wire editor home to project API
+- Share dialog
 
 ## Current Goal
 
-- Implement `context/feature-specs/07-wire-editor-home.md`: server-fetched owned/shared projects in sidebar; create/rename/delete dialogs call real API.
+- Implement `context/feature-specs/09-share-dialog.md`: navbar `Share` opens share dialog; owners invite/remove collaborators + copy link; collaborators read-only; Clerk-enriched names/avatars.
 
 ## In Progress
+
+- Share dialog (09-share-dialog.md):
+  - [x] API `app/api/projects/[projectId]/collaborators/route.ts`: `GET` (owner or collaborator via `getAccessibleProject`, else `404`) → `{ collaborators }`; `POST { email }` (owner only via `assertProjectOwner`) → `201 { collaborators }`; invalid email → `400`, owner's own email → `400`, duplicate (case-insensitive) → `409`. `[collaboratorId]/route.ts` `DELETE` (owner only, scoped to project, missing → `404`) → `204`. Email parsing `parseCollaboratorEmail` in `lib/project-input.ts` (trim + lowercase)
+  - [x] `lib/collaborators.ts` `listCollaborators`: DB rows (oldest first) enriched via Clerk `users.getUserList({ emailAddress })` (batches of 100; re-keyed by exact email since Clerk matches partially) → `name` (fullName/username) + `avatarUrl`; no match or Clerk failure → email only. Type `types/collaborator.ts`. No local user table
+  - [x] `hooks/use-project-sharing.ts`: dialog open state, list load on every open, invite form/error, remove (per-row loading) — mirrors `useProjectActions` pattern
+  - [x] `components/editor/share-dialog.tsx` (presentational, `EditorDialog`): owner → invite form + list w/ remove + footer `Copy link` (`Copied!` for 2s); collaborator → read-only list + "Only the project owner can manage access." Avatar via `<img>` (initial fallback)
+  - [x] Navbar `Share` (`onShare`) opens dialog from `EditorWorkspace`
+  - [x] Verify: `tsc --noEmit`, `eslint .`, `npm run build` pass; `next start` → all 3 new handlers `401` unauthenticated. Not verified in browser (needs signed-in session): invite/remove, read-only view, Clerk names/avatars untested at runtime.
+
+## Completed
+
+- Editor workspace shell (08-editor-workspace-shell.md):
+  - [x] Route `app/editor/[roomId]/page.tsx` (server; renamed from `[projectId]`): no identity → `redirect('/sign-in')`; missing or unauthorized → `<AccessDenied />` (same UI for both, no room-ID probing)
+  - [x] `components/editor/access-denied.tsx`: centered, `Lock` icon, short message, `Back to projects` link → `/editor`
+  - [x] `lib/project-access.ts`: `getCurrentIdentity()` (React `cache`d; `userId` + lowercased primary email), `accessibleProjectsWhere(identity)` (owner OR collaborator by primary email, case-insensitive), `getAccessibleProject(id, identity)`, `toProject`; `assertProjectOwner` kept. `getAccessibleProject` moved here from `lib/projects.ts`; `getUserProjects` now takes `Identity` and matches shared projects by primary email only (was: any Clerk email) for consistency with access check
+  - [x] Layout: `EditorNavbar` takes optional `projectName` → centered name + `Share` button (no behavior) + AI toggle (`Sparkles`); `ProjectSidebar` `activeProjectId` → highlighted row (`bg-accent-dim`, brand border, `aria-current`), opens Shared tab when active room is shared; `components/editor/canvas-placeholder.tsx` (flex-1, `bg-bg-base`, centered message + room ID); `components/editor/ai-sidebar.tsx` right slide-over placeholder (mirrors project sidebar)
+  - [x] Verify: `npm run build` (`/editor/[roomId]` ƒ), `tsc --noEmit`, `eslint .` pass. Not verified in browser (needs signed-in session).
 
 - Wire editor home (07-wire-editor-home.md):
   - [x] Server data helper `lib/projects.ts`: `getUserProjects` (owned by Clerk ID + shared via collaborator email match on any of the user's Clerk emails, newest first), `getAccessibleProject` (owner or collaborator, else null). Spec said "existing" helper — none existed, so created.
@@ -23,8 +40,6 @@ Update this file whenever the current phase, active feature, or implementation s
   - [x] Wiring: create shows room ID preview, rename pre-fills name, delete shows project name; API errors shown inline in dialogs
   - [x] Minimal workspace route `app/editor/[projectId]/page.tsx` (server): access check → `notFound()`, renders `EditorWorkspace` with `activeProject` (center placeholder = name + room ID; canvas not built yet). Sidebar items link to `/editor/[id]` and show room ID instead of slug (`Project.slug` removed).
   - [x] `npm run build`, `tsc --noEmit`, `eslint .` pass. Not verified in browser (needs signed-in session): create→navigate, rename refresh, delete refresh/redirect untested at runtime.
-
-## Completed
 
 - Project APIs (06-project-apis.md):
   - [x] `GET /api/projects` (`app/api/projects/route.ts`) — list current user's owned projects, newest first → `{ projects }`
@@ -80,8 +95,10 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Open Questions
 
-- `/editor/[projectId]` workspace content undefined in specs; currently placeholder (name + room ID) so create navigation has a target. Replace when canvas/workspace spec lands.
+- Collaborator access matches Clerk primary email only (spec 08); secondary emails don't grant access.
 - Rename changes only the name; project/room ID keeps the original slug.
+- Share dialog lists collaborators only (owner not shown as a row) — spec silent; confirm.
+- Copy link is owner-only (spec lists it under owner abilities); collaborators can't copy from dialog.
 
 - Generated Prisma client is gitignored and `migrate dev` (v7) doesn't auto-generate; fresh clones/CI need `prisma generate` before build (e.g. `postinstall` script) — not added since spec forbids extras.
 - `.env.local` had only the Clerk keys; `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in` and `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up` (Clerk's standard var names) were added so the proxy can read public routes from env. Confirm these match the Clerk dashboard / deploy env.
@@ -95,6 +112,7 @@ Update this file whenever the current phase, active feature, or implementation s
 - Prisma 7: multi-file schema (`prisma.config.ts` → `prisma/`), models in `prisma/models/*.prisma`, generator `prisma-client` → `app/generated/prisma` (import from `@/app/generated/prisma/client`). DB access only via `prisma` from `lib/prisma.ts`. IDs are `cuid()`; `ownerId` stores Clerk user ID (no User table).
 - API auth: `proxy.ts` does not protect `/api(.*)`; every route handler calls Clerk `auth()` and returns `401` JSON itself. Ownership checked via `lib/project-access.ts` before mutations (`404` missing, `403` non-owner). Response shapes: `{ project }`, `{ projects }`, `{ error }`, `204` on delete.
 - Project ID = Liveblocks room ID: client generates `slugify(name)-<6-char suffix>` and sends it as `id` to `POST /api/projects`. Project lists are read server-side via `lib/projects.ts` and passed as props; client mutations call the API then `router.refresh()`/`push()` (no client-side project store).
+- Collaborator identity: DB stores emails only; display name/avatar resolved per request from Clerk Backend API (`lib/collaborators.ts`), never persisted. Collaborator list read allowed for owner + collaborators; invite/remove owner-only.
 - App is dark-only: theme tokens live in `:root`/`.dark` (kept identical) in `app/globals.css`, and `<html>` carries a permanent `dark` class rather than a toggle.
 
 ## Session Notes

@@ -2,13 +2,17 @@
 
 import { useState } from "react";
 
+import { AiSidebar } from "@/components/editor/ai-sidebar";
+import { CanvasPlaceholder } from "@/components/editor/canvas-placeholder";
 import { CreateProjectDialog } from "@/components/editor/create-project-dialog";
 import { DeleteProjectDialog } from "@/components/editor/delete-project-dialog";
 import { EditorHome } from "@/components/editor/editor-home";
 import { EditorNavbar } from "@/components/editor/editor-navbar";
 import { ProjectSidebar } from "@/components/editor/project-sidebar";
 import { RenameProjectDialog } from "@/components/editor/rename-project-dialog";
+import { ShareDialog } from "@/components/editor/share-dialog";
 import { useProjectActions } from "@/hooks/use-project-actions";
+import { useProjectSharing } from "@/hooks/use-project-sharing";
 import type { Project } from "@/types/project";
 
 interface EditorWorkspaceProps {
@@ -24,7 +28,9 @@ export function EditorWorkspace({
   activeProject,
 }: EditorWorkspaceProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAiSidebarOpen, setIsAiSidebarOpen] = useState(false);
   const projectDialogs = useProjectActions(activeProject?.id);
+  const sharing = useProjectSharing(activeProject?.id);
   const { dialog } = projectDialogs;
 
   function handleOpenChange(open: boolean) {
@@ -36,6 +42,10 @@ export function EditorWorkspace({
       <EditorNavbar
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={() => setIsSidebarOpen((open) => !open)}
+        projectName={activeProject?.name}
+        isAiSidebarOpen={isAiSidebarOpen}
+        onToggleAiSidebar={() => setIsAiSidebarOpen((open) => !open)}
+        onShare={() => void sharing.open()}
       />
 
       <ProjectSidebar
@@ -43,16 +53,23 @@ export function EditorWorkspace({
         onClose={() => setIsSidebarOpen(false)}
         ownedProjects={ownedProjects}
         sharedProjects={sharedProjects}
+        activeProjectId={activeProject?.id}
         onCreateProject={projectDialogs.openCreate}
         onRenameProject={projectDialogs.openRename}
         onDeleteProject={projectDialogs.openDelete}
       />
 
       {activeProject ? (
-        <main className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
-          <h1 className="text-2xl font-semibold text-copy-primary">{activeProject.name}</h1>
-          <p className="font-mono text-xs text-copy-faint">{activeProject.id}</p>
-        </main>
+        <>
+          <CanvasPlaceholder roomId={activeProject.id} />
+          <AiSidebar isOpen={isAiSidebarOpen} onClose={() => setIsAiSidebarOpen(false)} />
+          <ShareDialog
+            open={sharing.isOpen}
+            onOpenChange={(open) => !open && sharing.close()}
+            project={activeProject}
+            sharing={sharing}
+          />
+        </>
       ) : (
         <EditorHome onCreateProject={projectDialogs.openCreate} />
       )}
