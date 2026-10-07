@@ -51,6 +51,19 @@ export function parseCreateId(body: Record<string, unknown>): ParseResult<string
   return { ok: true, value: id };
 }
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_MAX_LENGTH = 254;
+
+/** Invite: required email, trimmed and lowercased so collaborator rows match case-insensitively. */
+export function parseCollaboratorEmail(body: Record<string, unknown>): ParseResult<string> {
+  const { email } = body;
+  const value = typeof email === "string" ? email.trim().toLowerCase() : "";
+  if (!value || value.length > EMAIL_MAX_LENGTH || !EMAIL_PATTERN.test(value)) {
+    return { ok: false, error: "Enter a valid email address" };
+  }
+  return { ok: true, value };
+}
+
 /** Rename: name is required and must be non-blank. */
 export function parseRenameName(body: Record<string, unknown>): ParseResult<string> {
   const { name } = body;
