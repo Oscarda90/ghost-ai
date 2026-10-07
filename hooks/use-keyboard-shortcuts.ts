@@ -13,7 +13,7 @@ type KeyboardShortcutOptions = {
   onRedo: () => void;
 };
 
-function isEditableTarget(target: EventTarget | null) {
+export function isEditableTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
   return (
     target.isContentEditable ||

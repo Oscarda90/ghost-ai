@@ -9,6 +9,7 @@ import {
   RectangleHorizontal,
   type LucideIcon,
 } from "lucide-react";
+import { useReactFlow } from "@xyflow/react";
 import { useRef, type DragEvent } from "react";
 
 import { NodeShapeFrame } from "@/components/editor/node-shape";
@@ -29,6 +30,7 @@ export function ShapePanel() {
   // Off-screen ghost per shape, used as the native drag image. The browser keeps
   // it under the cursor and removes it on drop or cancel.
   const previewRefs = useRef<Partial<Record<NodeShape, HTMLDivElement | null>>>({});
+  const { getZoom } = useReactFlow();
 
   function handleDragStart(event: DragEvent<HTMLButtonElement>, shape: NodeShape) {
     event.dataTransfer.setData(SHAPE_DRAG_MIME, serializeShapePayload(shape));
@@ -36,8 +38,13 @@ export function ShapePanel() {
 
     const preview = previewRefs.current[shape];
     if (preview) {
-      const { width, height } = SHAPE_DEFAULT_SIZES[shape];
-      // Centered on the cursor, matching where the node lands on drop.
+      // Sized to the current zoom so the ghost matches the node that lands;
+      // centered on the cursor, which is where the drop handler centers it.
+      const zoom = getZoom();
+      const width = SHAPE_DEFAULT_SIZES[shape].width * zoom;
+      const height = SHAPE_DEFAULT_SIZES[shape].height * zoom;
+      preview.style.width = `${width}px`;
+      preview.style.height = `${height}px`;
       event.dataTransfer.setDragImage(preview, width / 2, height / 2);
     }
   }

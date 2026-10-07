@@ -4,13 +4,51 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Starter templates
+- Canvas autosave
 
 ## Current Goal
 
-- Implement `context/feature-specs/18-starter-template.md`: predefined template library + import modal that replaces the canvas.
+- Implement `context/feature-specs/21-canvas-autosave.md`: persist canvas JSON to Vercel Blob (URL on Prisma project), debounced autosave, load saved canvas into empty rooms, save status in navbar.
 
 ## In Progress
+
+- Canvas autosave (21-canvas-autosave.md):
+  - [x] Install `@vercel/blob` (`^2.8.1`)
+  - [x] Schema: reuse existing `Project.canvasJsonPath` for the blob URL → no migration (Prisma = metadata only)
+  - [x] `lib/canvas-snapshot.ts` (client-safe): `CanvasSnapshot { nodes, edges }`, `toCanvasSnapshot` (strips `selected`/`dragging`/`resizing`/`measured` → selection alone doesn't trigger saves), `parseCanvasSnapshot` (validates node id/position/data label+color+shape, edge id/source/target; caps 2000 nodes / 4000 edges)
+  - [x] `lib/canvas-storage.ts` (server): `saveCanvasSnapshot` → `put("canvas/{projectId}.json", { access: "private", addRandomSuffix: false, allowOverwrite: true })` → stable URL; `loadCanvasSnapshot(url)` → `get(url, { access: "private", useCache: false })` → parsed snapshot or null. Store is private (public `put` rejected), so reads go through SDK `get` w/ token, not raw URL
+  - [x] `app/api/projects/[projectId]/canvas/route.ts`: `PUT` (body validated first; owner or collaborator via `accessibleProjectsWhere`, else `404`) → Blob upload → `canvasJsonPath` update → `204`. `GET` (same access) → `{ canvas }` (`null` when no URL or blob missing)
+  - [x] `hooks/use-canvas-autosave.ts` `useCanvasAutosave({ projectId, nodes, edges, enabled })` → `{ status: idle|saving|saved|error, saveNow? }`. Serialized snapshot compared to last saved; 1500ms debounce; one save at a time (loop re-saves changes made while in flight → ordered writes); baseline = canvas when enabled (opening doesn't write); unmount flushes pending change via `fetch` `keepalive`
+  - [x] `hooks/use-canvas-restore.ts` `useCanvasRestore`: room non-empty on first render (storage loaded via suspense) → skip entirely (`ready`); empty → `GET` → re-check still empty → `room.batch` add nodes+edges (one undo step) + fit view. Autosave `enabled` only once phase `ready` → empty room can't overwrite saved canvas; load failure → status `error`, autosave stays off
+  - [x] Navbar `Save` button (workspace only, before Templates): icon+label `Save` / `Saving...` (spin) / `Saved` (success check) / `Error` (error color); `saved`/`error` revert to `idle` after 2s (hook `STATUS_RESET_MS`); click → `saveNow`; disabled until canvas ready or while saving. Status lifted `CanvasFlow` → `onAutosaveChange` → `EditorWorkspace` state → navbar
+  - [x] Verify: `tsc --noEmit`, `eslint`, `npm run build` pass; Blob round-trip via `tsx` script (save, overwrite → same URL, load latest, delete → null; strip + validation). Not verified in browser (needs signed-in session)
+- Editor fixes (`context/current-issues.md` 1–7, all pending user test):
+  - [x] Delete/Backspace: window keydown in `CanvasFlow` (skips editable targets via exported `isEditableTarget`; only when focus is body or inside canvas wrapper) → `useNodes`/`useEdges` filtered `selected` → Liveblocks `onDelete` incl. `getConnectedEdges` (its `onDelete` doesn't cascade). RF `deleteKeyCode={null}`
+  - [x] Handles: no code change — all 4 handles hit-testable, side→top connection verified in browser
+  - [x] Drop: math already centers node on cursor (verified via dispatched drop, zoom 2). Drag ghost now sized `SHAPE_DEFAULT_SIZES × getZoom()` so it matches the landed node
+  - [x] First-drop zoom: RF `fitView` prop stays queued until first node measured → now `fitView` only if room non-empty on mount; restore of empty snapshot no longer sets pending fit
+  - [x] `next.config.ts` `images.remotePatterns` `https://img.clerk.com/**`
+  - [x] Navbar `UserButton` already only on editor home (`!projectName`); workspace keeps it in `PresenceAvatars`
+
+## Completed
+
+- AI sidebar shell (20-ai-sidebar-shell.md):
+  - [x] `components/editor/ai-sidebar.tsx` `AiSidebar` (shell; `isOpen`/`onClose` from `EditorWorkspace`, unchanged): same fixed position/size/slide/border/shadow; bg → `bg-bg-base/95` (spec). Tab bodies split into `ai-architect-tab.tsx` + `ai-specs-tab.tsx`
+  - [x] Header: `Bot` in `bg-ai/15` tile, `AI Workspace` (`text-copy-primary`), `Collaborate with Ghost AI` (`text-copy-muted`), ghost close button right
+  - [x] shadcn `Tabs` (`AI Architect` / `Specs`): active `bg-ai/15 text-ai-text`, inactive `text-copy-muted`
+  - [x] AI Architect: `overflow-y-auto` chat area (auto-scrolls to bottom); empty state (bot icon, description, 3 starter chips `bg-bg-subtle text-ai-text` pills → fill input + focus); bubbles: user right `bg-accent-dim border-2 border-brand/50 text-copy-primary`, assistant left `bg-bg-elevated border-surface-border text-ai-text`; shadcn `Textarea` JS auto-resize 72–160px then scroll; send `bg-ai text-white` (disabled when empty); Enter submits (skips IME composition), Shift+Enter newline. Messages local state only — submit appends user message, no assistant reply
+  - [x] Specs: `Generate Spec` (`bg-ai text-white`, no handler) + static demo card (`bg-bg-elevated`, `border-surface-border`, `FileText` icon, title, 3-line snippet, disabled `Download`)
+  - [x] Token mapping (spec names ≠ project tokens): "accent"/`accent-text` → AI accent (`ai`/`ai-text`); `brand-dim` → `accent-dim`; `primary-text`/`muted-text` → `copy-primary`/`copy-muted`; `bg-subtle`/`bg-elevated`/`bg-base` → `bg-bg-*`. No new colors
+  - [x] Verify: `tsc --noEmit`, `eslint`, `npm run build` pass. Not verified in browser (needs signed-in session)
+
+- Presence avatars & cursors (19-presence-avatars-cursor.md):
+  - [x] `liveblocks.config.ts` Presence: `cursor: {x,y} | null`, `thinking: boolean` (renamed from `isThinking`; `initialPresence` in `canvas-room.tsx` updated)
+  - [x] `components/editor/presence-avatars.tsx` `PresenceAvatars`: pill overlay `absolute top-4 right-4 z-20` inside canvas (`CanvasFlow`) → only in room view. Current user = Clerk `useAuth().userId`; `useOthersMapped` filtered by `other.id !== userId`, deduped per user ID (multi-tab). Up to 5 overlapping (`-space-x-2`) display-only avatars (photo, else initials on presence color), `+N` chip, `ring-2 ring-bg-surface`. Divider only when ≥1 collaborator. Clerk `UserButton` (avatar box `size-8` = collaborator size)
+  - [x] Navbar: `UserButton` rendered only when no `projectName` (editor home unchanged; workspace's moves into canvas group → no duplicate). Other navbar actions untouched
+  - [x] Cursors: `ReactFlow` `onMouseMove` → `updateMyPresence({ cursor: screenToFlowPosition(...) })` (flow coords → same diagram spot for every viewer regardless of pan/zoom); `onMouseLeave` → `cursor: null`
+  - [x] `components/editor/live-cursors.tsx` `LiveCursors`: others only (also excludes current Clerk user's other tabs), mapped via `useViewport` (`x*zoom + viewX`), `pointer-events-none` overlay; SVG pointer + name badge in `info.color`
+  - [x] Node/edge behavior untouched
+  - [x] Verify: `tsc --noEmit`, `eslint`, `npm run build` pass. Not verified in browser (needs 2 signed-in sessions + `LIVEBLOCKS_SECRET_KEY`)
 
 - Starter templates (18-starter-template.md):
   - [x] `components/editor/starter-templates.ts`: `CanvasTemplate` (`id`, `name`, `description`, `nodes: CanvasNode[]`, `edges: CanvasEdge[]`), `CANVAS_TEMPLATES` (Microservices, CI/CD Pipeline, Event-Driven System). Helpers `node()` (centered, `SHAPE_DEFAULT_SIZES`, `NODE_COLORS` by name) + `edge()` (handles right→left default, optional label). `instantiateTemplate` → per-import unique IDs (`${templateId}-${Date.now()}-${id}`)
@@ -20,8 +58,6 @@ Update this file whenever the current phase, active feature, or implementation s
   - [x] Import (`canvas-flow.tsx`): `room.batch` { `onDelete({ nodes, edges })` (all current; `remove` changes are no-ops in `useLiveblocksFlow`) → `onNodesChange` adds → `onEdgesChange` adds } → single undo step, single remote update. Then `fitView` (animated) in effect after nodes update
   - [x] No template saving/custom templates/server persistence; node/edge rendering untouched
   - [x] Verify: `tsc --noEmit`, `eslint`, `npm run build` pass. Not verified in browser (needs signed-in session + `LIVEBLOCKS_SECRET_KEY`)
-
-## Completed
 
 - Canvas ergonomics (17-canvas-ergonomics.md):
   - [x] `components/editor/canvas-controls.tsx` `CanvasControls`: pill bottom-left (`bottom-6 left-6`, `z-20` → above shape panel's `z-10`), same container style as shape panel; zoom out (`ZoomOut`) / fit view (`Maximize`) / zoom in (`ZoomIn`) | `w-px` divider | undo (`Undo2`) / redo (`Redo2`). Presentational; handlers from `canvas-flow.tsx`
@@ -175,6 +211,9 @@ Update this file whenever the current phase, active feature, or implementation s
 - `LIVEBLOCKS_SECRET_KEY` not in `.env`/`.env.local`; must be added before the auth route works.
 - All project members (owner + collaborators) get `FULL_ACCESS` to the room; no read-only role.
 - Node label editing: last writer wins; a remote label change made while someone is editing that node is overwritten by their next keystroke (local draft).
+- Presence (spec 19): workspace navbar no longer shows `UserButton` (moved into canvas presence group to avoid two on screen); spec said keep navbar as-is — confirm. Spec mentions Save/Import navbar actions; none exist (navbar has Templates/Share/AI).
+- AI sidebar (spec 20): spec's `bg-accent` read as AI accent (indigo `ai`), not shadcn `accent` (= cyan brand dim, too faint for white text) — confirm. Sidebar bg changed `bg-bg-surface/90` → `bg-bg-base/95` per spec.
+- Autosave (spec 21): every connected client autosaves the same shared state (N identical writes per change, last write wins) — fine for now; could elect one saver later. Restore is undoable (one step); undoing it then autosaves the empty canvas. Spec mentioned a navbar Save button that didn't exist → added (manual save + status). Unmount flush `keepalive` limited to 64 KB bodies by browsers.
 - Template import replaces the canvas with no confirmation step (spec silent); undo restores the previous canvas.
 - Edge label editing: saved on commit (blur/Enter/Escape), not per keystroke; Escape saves too (per spec), no cancel. Last writer wins.
 
@@ -198,6 +237,7 @@ Update this file whenever the current phase, active feature, or implementation s
 - Collaborator identity: DB stores emails only; display name/avatar resolved per request from Clerk Backend API (`lib/collaborators.ts`), never persisted. Collaborator list read allowed for owner + collaborators; invite/remove owner-only.
 - Liveblocks auth: access tokens (not ID tokens). `POST /api/liveblocks-auth` checks project membership via `getAccessibleProject`, ensures the room exists with `defaultAccesses: []` (private), and grants access to that single room only. Server client only via `getLiveblocks()` from `lib/liveblocks.ts`. User color derived from user ID, never stored.
 - Canvas: Liveblocks providers mounted per workspace in `CanvasRoom` (client), not in the root layout. React Flow state lives only in Liveblocks Storage (`flow` key via `useLiveblocksFlow`); no local node/edge state.
+- Canvas persistence: Liveblocks room = live state; Vercel Blob (private store) `canvas/{projectId}.json` = durable snapshot, URL in `Project.canvasJsonPath`. Snapshot loaded only into an empty room on editor open; autosave starts after that check.
 - App is dark-only: theme tokens live in `:root`/`.dark` (kept identical) in `app/globals.css`, and `<html>` carries a permanent `dark` class rather than a toggle.
 
 ## Session Notes

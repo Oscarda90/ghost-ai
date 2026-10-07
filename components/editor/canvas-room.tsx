@@ -11,26 +11,35 @@ import { useState, type ReactNode } from "react";
 
 import { CanvasErrorBoundary } from "@/components/editor/canvas-error-boundary";
 import { CanvasFlow } from "@/components/editor/canvas-flow";
+import type { CanvasAutosave } from "@/hooks/use-canvas-autosave";
 
 interface CanvasRoomProps {
   roomId: string;
   /** Starter templates modal state; owned by the workspace (opened from the navbar). */
   isTemplatesOpen: boolean;
   onTemplatesOpenChange: (open: boolean) => void;
+  onAutosaveChange: (autosave: CanvasAutosave) => void;
 }
 
 /** Connects to the project's Liveblocks room and renders the collaborative canvas. */
-export function CanvasRoom({ roomId, isTemplatesOpen, onTemplatesOpenChange }: CanvasRoomProps) {
+export function CanvasRoom({
+  roomId,
+  isTemplatesOpen,
+  onTemplatesOpenChange,
+  onAutosaveChange,
+}: CanvasRoomProps) {
   return (
     <main className="relative min-h-0 min-w-0 flex-1 bg-bg-base">
       <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
-        <RoomProvider id={roomId} initialPresence={{ cursor: null, isThinking: false }}>
+        <RoomProvider id={roomId} initialPresence={{ cursor: null, thinking: false }}>
           <CanvasErrorBoundary fallback={<CanvasError />}>
             <ConnectionErrorGate>
               <ClientSideSuspense fallback={<CanvasLoading />}>
                 <CanvasFlow
+                  projectId={roomId}
                   isTemplatesOpen={isTemplatesOpen}
                   onTemplatesOpenChange={onTemplatesOpenChange}
+                  onAutosaveChange={onAutosaveChange}
                 />
               </ClientSideSuspense>
             </ConnectionErrorGate>
