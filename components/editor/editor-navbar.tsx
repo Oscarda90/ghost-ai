@@ -1,7 +1,7 @@
 "use client";
 
 import { UserButton } from "@clerk/nextjs";
-import { PanelLeftClose, PanelLeftOpen, Share2, Sparkles } from "lucide-react";
+import { LayoutTemplate, PanelLeftClose, PanelLeftOpen, Share2, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ interface EditorNavbarProps {
   isAiSidebarOpen?: boolean;
   onToggleAiSidebar?: () => void;
   onShare?: () => void;
+  onOpenTemplates?: () => void;
 }
 
 export function EditorNavbar({
@@ -23,6 +24,7 @@ export function EditorNavbar({
   isAiSidebarOpen = false,
   onToggleAiSidebar,
   onShare,
+  onOpenTemplates,
 }: EditorNavbarProps) {
   const ToggleIcon = isSidebarOpen ? PanelLeftClose : PanelLeftOpen;
 
@@ -50,6 +52,10 @@ export function EditorNavbar({
       <div className="flex flex-1 items-center justify-end gap-2">
         {projectName && (
           <>
+            <Button variant="outline" size="sm" className="rounded-xl" onClick={onOpenTemplates}>
+              <LayoutTemplate className="h-4 w-4" />
+              <span className="hidden sm:inline">Templates</span>
+            </Button>
             <Button variant="outline" size="sm" className="rounded-xl" onClick={onShare}>
               <Share2 className="h-4 w-4" />
               <span className="hidden sm:inline">Share</span>

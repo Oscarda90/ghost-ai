@@ -29,6 +29,7 @@ export function EditorWorkspace({
 }: EditorWorkspaceProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAiSidebarOpen, setIsAiSidebarOpen] = useState(false);
+  const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
   const projectDialogs = useProjectActions(activeProject?.id);
   const sharing = useProjectSharing(activeProject?.id);
   const { dialog } = projectDialogs;
@@ -46,6 +47,7 @@ export function EditorWorkspace({
         isAiSidebarOpen={isAiSidebarOpen}
         onToggleAiSidebar={() => setIsAiSidebarOpen((open) => !open)}
         onShare={() => void sharing.open()}
+        onOpenTemplates={() => setIsTemplatesOpen(true)}
       />
 
       <ProjectSidebar
@@ -61,7 +63,11 @@ export function EditorWorkspace({
 
       {activeProject ? (
         <>
-          <CanvasRoom roomId={activeProject.id} />
+          <CanvasRoom
+            roomId={activeProject.id}
+            isTemplatesOpen={isTemplatesOpen}
+            onTemplatesOpenChange={setIsTemplatesOpen}
+          />
           <AiSidebar isOpen={isAiSidebarOpen} onClose={() => setIsAiSidebarOpen(false)} />
           <ShareDialog
             open={sharing.isOpen}

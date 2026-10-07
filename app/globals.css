@@ -25,6 +25,7 @@
     --color-state-error: var(--state-error);
     --color-state-success: var(--state-success);
     --color-state-warning: var(--state-warning);
+    --color-edge: var(--edge-default);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -85,6 +86,7 @@
     --state-error: #ff4d4f;
     --state-success: #34d399;
     --state-warning: #fbbf24;
+    --edge-default: #f8fafc;
 
     /* shadcn/ui semantic tokens mapped to the design tokens above */
     --background: var(--bg-base);
