@@ -54,4 +54,10 @@ export type CanvasNodeData = {
 };
 
 export type CanvasNode = Node<CanvasNodeData, "canvasNode">;
-export type CanvasEdge = Edge<Record<string, never>, "canvasEdge">;
+// `type` for the same `Record<string, unknown>` reason as `CanvasNodeData`.
+export type CanvasEdgeData = {
+  /** Inline edge label; absent or empty when unlabeled. */
+  label?: string;
+};
+
+export type CanvasEdge = Edge<CanvasEdgeData, "canvasEdge">;

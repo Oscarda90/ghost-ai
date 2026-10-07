@@ -4,13 +4,67 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Shape panel
+- Starter templates
 
 ## Current Goal
 
-- Implement `context/feature-specs/12-shape-panel.md`: bottom shape panel, drag shapes onto canvas to create nodes.
+- Implement `context/feature-specs/18-starter-template.md`: predefined template library + import modal that replaces the canvas.
 
 ## In Progress
+
+- Starter templates (18-starter-template.md):
+  - [x] `components/editor/starter-templates.ts`: `CanvasTemplate` (`id`, `name`, `description`, `nodes: CanvasNode[]`, `edges: CanvasEdge[]`), `CANVAS_TEMPLATES` (Microservices, CI/CD Pipeline, Event-Driven System). Helpers `node()` (centered, `SHAPE_DEFAULT_SIZES`, `NODE_COLORS` by name) + `edge()` (handles right→left default, optional label). `instantiateTemplate` → per-import unique IDs (`${templateId}-${Date.now()}-${id}`)
+  - [x] `components/editor/starter-templates-modal.tsx` `StarterTemplatesModal` (`EditorDialog`, `sm:max-w-3xl`): `ScrollArea` (`max-h-[60vh]`) 2-col grid of cards (preview, name, description, `Import` button) → `onImport(template)` then close
+  - [x] Preview: static SVG, viewBox = node bounds + 24px padding, `preserveAspectRatio` meet in fixed `h-40` viewport; edges = lines between node centers; nodes drawn per shape (rect/pill/ellipse/diamond/hexagon/cylinder) with fill color. No labels, no React Flow
+  - [x] Navbar `Templates` button (`LayoutTemplate`, workspace only) → modal state in `EditorWorkspace` → `CanvasRoom` → `CanvasFlow` (modal rendered inside flow for Liveblocks access)
+  - [x] Import (`canvas-flow.tsx`): `room.batch` { `onDelete({ nodes, edges })` (all current; `remove` changes are no-ops in `useLiveblocksFlow`) → `onNodesChange` adds → `onEdgesChange` adds } → single undo step, single remote update. Then `fitView` (animated) in effect after nodes update
+  - [x] No template saving/custom templates/server persistence; node/edge rendering untouched
+  - [x] Verify: `tsc --noEmit`, `eslint`, `npm run build` pass. Not verified in browser (needs signed-in session + `LIVEBLOCKS_SECRET_KEY`)
+
+## Completed
+
+- Canvas ergonomics (17-canvas-ergonomics.md):
+  - [x] `components/editor/canvas-controls.tsx` `CanvasControls`: pill bottom-left (`bottom-6 left-6`, `z-20` → above shape panel's `z-10`), same container style as shape panel; zoom out (`ZoomOut`) / fit view (`Maximize`) / zoom in (`ZoomIn`) | `w-px` divider | undo (`Undo2`) / redo (`Redo2`). Presentational; handlers from `canvas-flow.tsx`
+  - [x] Zoom via `useReactFlow()` instance `zoomIn`/`zoomOut`/`fitView`, `duration: ZOOM_ANIMATION_MS` (200ms)
+  - [x] Undo/redo via `useUndo`/`useRedo`/`useCanUndo`/`useCanRedo` (`@liveblocks/react/suspense`); buttons `disabled` + `opacity-40` when unavailable
+  - [x] `hooks/use-keyboard-shortcuts.ts` `useKeyboardShortcuts({ flow, onUndo, onRedo })` (kebab file name per `hooks/` convention): `window` keydown; skips `defaultPrevented`, input/textarea/select/contentEditable targets
+  - [x] Shortcuts: `+`/`=` zoom in, `-` zoom out (unmodified only → browser Ctrl/Cmd +/- page zoom untouched), Mod+Z undo, Mod+Shift+Z / Mod+Y redo; handled keys `preventDefault`
+  - [x] Minimap removed. Shape panel, node/edge rendering, Liveblocks flow setup untouched
+  - [x] Verify: `tsc --noEmit`, `eslint`, `npm run build` pass. Not verified in browser (needs signed-in session + `LIVEBLOCKS_SECRET_KEY`)
+
+- Edge behavior (16-edge-behavior.md):
+  - [x] Handles (`canvas-node.tsx`): 4 `type="source"` `Handle`s (ids = `Position` values) top/right/bottom/left; `ConnectionMode.Loose` → any-to-any. `size-2`, `bg-edge` (white) + `border-bg-base`; `opacity-0`, fade in via `in-[.react-flow__node:hover]`
+  - [x] Edge color token `--edge-default: #f8fafc` (ui-context Edge Style) in `globals.css` → Tailwind `edge`
+  - [x] `defaultEdgeOptions` (`canvas-flow.tsx`): type `canvasEdge`, stroke `var(--edge-default)` 1.5px round caps, `markerEnd` `ArrowClosed` 16×16. React Flow merges them into the connection before `onConnect` → stored with the edge in Liveblocks; also merged at render for older edges
+  - [x] `components/editor/canvas-edge.tsx` `CanvasEdgeView` registered as `edgeTypes.canvasEdge`: `getSmoothStepPath` routing; `opacity-60` at rest, 100 on hover (`in-[.react-flow__edge:hover]`) or active (`data-active` = selected/editing); own 24px transparent hit path (BaseEdge `interactionWidth={0}`) with `nopan` (no dblclick zoom) + double-click → edit
+  - [x] Labels: `EdgeLabelRenderer` positioned at `getSmoothStepPath` `labelX`/`labelY` (no manual midpoint). Edit: local draft, input over invisible sizer (`inline-grid`) → grows with text; Enter/Escape blur → save on blur (trimmed, only if changed) via `updateEdgeData` (`replace` → `onEdgesChange` → Liveblocks). Saved → `rounded-full` pill (brand border when selected); active + empty → faint `Add label` hint; label wrapper `nodrag nopan`, keydown propagation stopped. `CanvasEdgeData = { label?: string }` in `types/canvas.ts`
+  - [x] Node creation, shape panel, node renderer (beyond handles) untouched
+  - [x] Verify: `tsc --noEmit`, `eslint`, `npm run build` pass; generated CSS checked for hover/active variants. Not verified in browser (needs signed-in session + `LIVEBLOCKS_SECRET_KEY`)
+
+- Node color toolbar (15-nodes-color-toolbar.md):
+  - [x] Palette: reuse `NODE_COLORS` fill/text pairs in `types/canvas.ts` (not in `globals.css`)
+  - [x] `components/editor/node-color-toolbar.tsx` `NodeColorToolbar`: React Flow `NodeToolbar` (`Position.Top`, offset 10px → above, no overlap), `isVisible={selected}`; pill container matching shape panel; one swatch per pair (fill circle + inner dot in text color, via `--swatch-fill`/`--swatch-text` CSS vars)
+  - [x] Active swatch: solid text-color border + `ring-2` + offset, `aria-pressed`; hover/focus-visible → 1px ring + 6px (spread -1) glow in text color
+  - [x] `nodrag nopan nowheel` on toolbar
+  - [x] Swatch click → `updateNodeData(id, { color: fill })` (→ `onNodesChange` → Liveblocks); text color derived from fill's pair in `canvas-node.tsx` (single source → both update). No server calls
+  - [x] Drag/drop, selection, resize, label editing untouched
+  - [x] Verify: `tsc --noEmit`, `eslint`, `npm run build` pass. Not verified in browser (needs signed-in session + `LIVEBLOCKS_SECRET_KEY`)
+
+- Node editing (14-node-editing.md):
+  - [x] Resize: React Flow `NodeResizer` in `canvas-node.tsx`, visible only when selected, min 60×40 (`MIN_NODE_WIDTH`/`MIN_NODE_HEIGHT`), handles `size-2` `bg-bg-elevated` + brand border, lines `brand/40`
+  - [x] Resize syncs via existing `onNodesChange` (`dimensions` change w/ `setAttributes` → Liveblocks sets `width`/`height`; history paused during resize)
+  - [x] Label: centered, placeholder `Add label` (50% opacity) when empty, same box; double-click label band (`nopan` → no dblclick zoom) to edit
+  - [x] Editing: local `draft` state (stable caret) + `textarea` absolutely over invisible sizing `span` (mirrors draft + zero-width space → no layout shift, grows w/ text). Each keystroke → `useReactFlow().updateNodeData` (→ `replace` change → `onNodesChange` → Liveblocks). Closes on blur/`Escape`; keydown propagation stopped; caret at end on open. Labels render `whitespace-pre-wrap` (multi-line via Enter)
+  - [x] Text interactions don't drag/pan/zoom canvas (`nodrag nopan nowheel` on textarea)
+  - [x] Shape rendering, shape panel, drag preview, drop creation untouched
+  - [x] Verify: `tsc --noEmit`, `eslint`, `npm run build` pass. Not verified in browser (needs signed-in session + `LIVEBLOCKS_SECRET_KEY`)
+
+- Node shapes (13-node-shape.md):
+  - [x] `components/editor/node-shape.tsx` `NodeShapeFrame` (shared by nodes + preview): rectangle (`rounded-lg`), pill/circle (`rounded-full`) via CSS border; diamond/hexagon/cylinder via SVG (`viewBox 0 0 100 100`, `preserveAspectRatio="none"` → scales to node box, `non-scaling-stroke` 1px). Border `surface-border-subtle` at rest, `brand` when selected. Per-shape label padding
+  - [x] `canvas-node.tsx` renders `NodeShapeFrame` from `data.shape` (still reads Liveblocks-synced node data; no state changes)
+  - [x] Drag ghost: `shape-panel.tsx` renders off-screen previews (default size, default color, 70% opacity) → `dataTransfer.setDragImage` centered on cursor (matches drop centering). Browser handles follow/hide on drop/cancel. Preview is at default size in screen px (not scaled by canvas zoom)
+  - [x] Node creation/drop logic untouched; no resize/label editing
+  - [x] Verify: `tsc --noEmit`, `eslint`, `npm run build` pass. Not verified in browser (needs signed-in session + `LIVEBLOCKS_SECRET_KEY`)
 
 - Shape panel (12-shape-panel.md):
   - [x] `components/editor/shape-panel.tsx`: floating pill toolbar bottom-center (`rounded-full`, `bg-bg-surface/90`, blur), draggable icon buttons for all 6 `NODE_SHAPES` (lucide `RectangleHorizontal`/`Diamond`/`Circle`/`Pill`/`Cylinder`/`Hexagon`)
@@ -20,8 +74,6 @@ Update this file whenever the current phase, active feature, or implementation s
   - [x] `types/canvas.ts`: `NODE_COLORS` (8 fill/text pairs from ui-context), `DEFAULT_NODE_COLOR`, `ShapeSize`, `ShapeDragPayload`
   - [x] `components/editor/canvas-node.tsx` `CanvasNodeView` registered as `nodeTypes.canvasNode`: bordered rectangle (`rounded-xl`, brand border when selected), centered label, fill/text from palette. No handles yet (spec: basic renderer only) → nodes can't be connected until handles added
   - [x] Verify: `tsc --noEmit`, `eslint`, `npm run build` pass; payload/parse/node creation sanity-checked via `tsx` script. Not verified in browser (needs signed-in session + `LIVEBLOCKS_SECRET_KEY`)
-
-## Completed
 
 - Base canvas (11-base-canvas.md):
   - [x] Workspace page stays server-side (`app/editor/[roomId]/page.tsx` unchanged)
@@ -122,6 +174,9 @@ Update this file whenever the current phase, active feature, or implementation s
 - `@liveblocks/node` was not installed despite spec 10 saying so; installed `^3.24.3` (matches other `@liveblocks/*`).
 - `LIVEBLOCKS_SECRET_KEY` not in `.env`/`.env.local`; must be added before the auth route works.
 - All project members (owner + collaborators) get `FULL_ACCESS` to the room; no read-only role.
+- Node label editing: last writer wins; a remote label change made while someone is editing that node is overwritten by their next keystroke (local draft).
+- Template import replaces the canvas with no confirmation step (spec silent); undo restores the previous canvas.
+- Edge label editing: saved on commit (blur/Enter/Escape), not per keystroke; Escape saves too (per spec), no cancel. Last writer wins.
 
 - Collaborator access matches Clerk primary email only (spec 08); secondary emails don't grant access.
 - Rename changes only the name; project/room ID keeps the original slug.

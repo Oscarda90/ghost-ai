@@ -14,10 +14,13 @@ import { CanvasFlow } from "@/components/editor/canvas-flow";
 
 interface CanvasRoomProps {
   roomId: string;
+  /** Starter templates modal state; owned by the workspace (opened from the navbar). */
+  isTemplatesOpen: boolean;
+  onTemplatesOpenChange: (open: boolean) => void;
 }
 
 /** Connects to the project's Liveblocks room and renders the collaborative canvas. */
-export function CanvasRoom({ roomId }: CanvasRoomProps) {
+export function CanvasRoom({ roomId, isTemplatesOpen, onTemplatesOpenChange }: CanvasRoomProps) {
   return (
     <main className="relative min-h-0 min-w-0 flex-1 bg-bg-base">
       <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
@@ -25,7 +28,10 @@ export function CanvasRoom({ roomId }: CanvasRoomProps) {
           <CanvasErrorBoundary fallback={<CanvasError />}>
             <ConnectionErrorGate>
               <ClientSideSuspense fallback={<CanvasLoading />}>
-                <CanvasFlow />
+                <CanvasFlow
+                  isTemplatesOpen={isTemplatesOpen}
+                  onTemplatesOpenChange={onTemplatesOpenChange}
+                />
               </ClientSideSuspense>
             </ConnectionErrorGate>
           </CanvasErrorBoundary>
