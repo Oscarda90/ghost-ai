@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { AiSidebar } from "@/components/editor/ai-sidebar";
-import { CanvasPlaceholder } from "@/components/editor/canvas-placeholder";
+import { CanvasRoom } from "@/components/editor/canvas-room";
 import { CreateProjectDialog } from "@/components/editor/create-project-dialog";
 import { DeleteProjectDialog } from "@/components/editor/delete-project-dialog";
 import { EditorHome } from "@/components/editor/editor-home";
@@ -61,7 +61,7 @@ export function EditorWorkspace({
 
       {activeProject ? (
         <>
-          <CanvasPlaceholder roomId={activeProject.id} />
+          <CanvasRoom roomId={activeProject.id} />
           <AiSidebar isOpen={isAiSidebarOpen} onClose={() => setIsAiSidebarOpen(false)} />
           <ShareDialog
             open={sharing.isOpen}

@@ -11,9 +11,12 @@ export interface Identity {
   primaryEmail: string | null;
 }
 
+/** Signed-in Clerk user, or null when unauthenticated. Deduped per request. */
+export const getCurrentUser = cache(currentUser);
+
 /** Signed-in Clerk user's ID + primary email, or null when unauthenticated. Deduped per request. */
 export const getCurrentIdentity = cache(async (): Promise<Identity | null> => {
-  const user = await currentUser();
+  const user = await getCurrentUser();
   if (!user) return null;
 
   return {

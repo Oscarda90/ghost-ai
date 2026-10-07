@@ -4,13 +4,39 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Share dialog
+- Shape panel
 
 ## Current Goal
 
-- Implement `context/feature-specs/09-share-dialog.md`: navbar `Share` opens share dialog; owners invite/remove collaborators + copy link; collaborators read-only; Clerk-enriched names/avatars.
+- Implement `context/feature-specs/12-shape-panel.md`: bottom shape panel, drag shapes onto canvas to create nodes.
 
 ## In Progress
+
+- Shape panel (12-shape-panel.md):
+  - [x] `components/editor/shape-panel.tsx`: floating pill toolbar bottom-center (`rounded-full`, `bg-bg-surface/90`, blur), draggable icon buttons for all 6 `NODE_SHAPES` (lucide `RectangleHorizontal`/`Diamond`/`Circle`/`Pill`/`Cylinder`/`Hexagon`)
+  - [x] Drag payload `{ shape, size }` (`ShapeDragPayload`) under MIME `application/x-canvas-shape`; sizes in `lib/canvas-shapes.ts` `SHAPE_DEFAULT_SIZES` (rectangle 160×80, diamond 140×140, circle 100×100, pill 160×60, cylinder 120×100, hexagon 140×100)
+  - [x] `canvas-flow.tsx`: wrapper div `dragover` (accepts only shape MIME) + `drop` → `parseShapePayload` (validated) → `screenToFlowPosition` → `onNodesChange([{ type: "add" }])` (synced to Liveblocks). `ReactFlowProvider` added so `useReactFlow` works. Node centered on cursor
+  - [x] `createShapeNode`: type `canvasNode`, `width`/`height` from payload, label `""`, color `DEFAULT_NODE_COLOR.fill`, dragged shape. ID `createNodeId` = `${shape}-${Date.now()}-${counter}`
+  - [x] `types/canvas.ts`: `NODE_COLORS` (8 fill/text pairs from ui-context), `DEFAULT_NODE_COLOR`, `ShapeSize`, `ShapeDragPayload`
+  - [x] `components/editor/canvas-node.tsx` `CanvasNodeView` registered as `nodeTypes.canvasNode`: bordered rectangle (`rounded-xl`, brand border when selected), centered label, fill/text from palette. No handles yet (spec: basic renderer only) → nodes can't be connected until handles added
+  - [x] Verify: `tsc --noEmit`, `eslint`, `npm run build` pass; payload/parse/node creation sanity-checked via `tsx` script. Not verified in browser (needs signed-in session + `LIVEBLOCKS_SECRET_KEY`)
+
+## Completed
+
+- Base canvas (11-base-canvas.md):
+  - [x] Workspace page stays server-side (`app/editor/[roomId]/page.tsx` unchanged)
+  - [x] `components/editor/canvas-room.tsx` (client, replaces deleted `canvas-placeholder.tsx`): `LiveblocksProvider` (`authEndpoint="/api/liveblocks-auth"`), `RoomProvider` (room ID, initial presence `cursor: null` + `isThinking: false` — required by typed Presence), `ClientSideSuspense` spinner. Error fallback two-layer: `CanvasErrorBoundary` (`canvas-error-boundary.tsx`, class component) for thrown errors + `useErrorListener` gate for `ROOM_CONNECTION_ERROR` (connection failures don't throw, suspense would hang)
+  - [x] `components/editor/canvas-flow.tsx`: `useLiveblocksFlow<CanvasNode, CanvasEdge>({ suspense: true, nodes/edges initial [] })` → `ReactFlow` nodes, edges, `onNodesChange`/`onEdgesChange`/`onConnect`/`onDelete`
+  - [x] `types/canvas.ts`: `NODE_SHAPES` + `NodeShape`, `CanvasNodeData` (label, color, shape; `type` not `interface` — React Flow needs `Record<string, unknown>` assignability), `CanvasNode` (`"canvasNode"`), `CanvasEdge` (`"canvasEdge"`)
+  - [x] Canvas: `ConnectionMode.Loose`, `fitView`, `MiniMap`, `BackgroundVariant.Dots`, `colorMode="dark"`. No controls/custom rendering/persistence/AI
+  - [x] Verify: `tsc --noEmit`, `eslint`, `npm run build` pass. Not verified in browser (needs signed-in session + `LIVEBLOCKS_SECRET_KEY`)
+
+- Liveblocks setup (10-liveblocks-setup.md):
+  - [x] `liveblocks.config.ts`: Presence (`cursor: {x,y} | null`, `isThinking`), UserMeta (`id` = Clerk user ID, `info.name`, `info.avatar`, `info.color`). Unused template types (`Storage`, `RoomEvent`, `ThreadMetadata`, `RoomInfo`) → `Record<string, never>` (eslint `no-empty-object-type`)
+  - [x] `lib/liveblocks.ts` `getLiveblocks()`: lazy `@liveblocks/node` client cached on `globalThis` (lazy so build doesn't need the secret); throws if `LIVEBLOCKS_SECRET_KEY` unset
+  - [x] `getUserColor(userId)` in `lib/liveblocks.ts`: string hash → fixed 10-color palette
+  - [x] `app/api/liveblocks-auth/route.ts` `POST { room }`: no Clerk user → `401`; bad/missing `room` → `400`; no access via `getAccessibleProject` → `403`; `getOrCreateRoom(room, { defaultAccesses: [] })`; access-token session (`prepareSession` + `allow(room, FULL_ACCESS)`) w/ `userInfo` name (fullName → username → email → `Anonymous`), avatar (Clerk `imageUrl`), color. `getCurrentUser` (React-`cache`d `currentUser`) added to `lib/project-access.ts`, reused by `getCurrentIdentity`
+  - [x] Verify: `tsc --noEmit`, `eslint .`, `npm run build` pass; `next start` → route `401` unauthenticated. Not verified: authorized token issue/room creation (needs signed-in session + `LIVEBLOCKS_SECRET_KEY`)
 
 - Share dialog (09-share-dialog.md):
   - [x] API `app/api/projects/[projectId]/collaborators/route.ts`: `GET` (owner or collaborator via `getAccessibleProject`, else `404`) → `{ collaborators }`; `POST { email }` (owner only via `assertProjectOwner`) → `201 { collaborators }`; invalid email → `400`, owner's own email → `400`, duplicate (case-insensitive) → `409`. `[collaboratorId]/route.ts` `DELETE` (owner only, scoped to project, missing → `404`) → `204`. Email parsing `parseCollaboratorEmail` in `lib/project-input.ts` (trim + lowercase)
@@ -19,8 +45,6 @@ Update this file whenever the current phase, active feature, or implementation s
   - [x] `components/editor/share-dialog.tsx` (presentational, `EditorDialog`): owner → invite form + list w/ remove + footer `Copy link` (`Copied!` for 2s); collaborator → read-only list + "Only the project owner can manage access." Avatar via `<img>` (initial fallback)
   - [x] Navbar `Share` (`onShare`) opens dialog from `EditorWorkspace`
   - [x] Verify: `tsc --noEmit`, `eslint .`, `npm run build` pass; `next start` → all 3 new handlers `401` unauthenticated. Not verified in browser (needs signed-in session): invite/remove, read-only view, Clerk names/avatars untested at runtime.
-
-## Completed
 
 - Editor workspace shell (08-editor-workspace-shell.md):
   - [x] Route `app/editor/[roomId]/page.tsx` (server; renamed from `[projectId]`): no identity → `redirect('/sign-in')`; missing or unauthorized → `<AccessDenied />` (same UI for both, no room-ID probing)
@@ -95,6 +119,10 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Open Questions
 
+- `@liveblocks/node` was not installed despite spec 10 saying so; installed `^3.24.3` (matches other `@liveblocks/*`).
+- `LIVEBLOCKS_SECRET_KEY` not in `.env`/`.env.local`; must be added before the auth route works.
+- All project members (owner + collaborators) get `FULL_ACCESS` to the room; no read-only role.
+
 - Collaborator access matches Clerk primary email only (spec 08); secondary emails don't grant access.
 - Rename changes only the name; project/room ID keeps the original slug.
 - Share dialog lists collaborators only (owner not shown as a row) — spec silent; confirm.
@@ -113,6 +141,8 @@ Update this file whenever the current phase, active feature, or implementation s
 - API auth: `proxy.ts` does not protect `/api(.*)`; every route handler calls Clerk `auth()` and returns `401` JSON itself. Ownership checked via `lib/project-access.ts` before mutations (`404` missing, `403` non-owner). Response shapes: `{ project }`, `{ projects }`, `{ error }`, `204` on delete.
 - Project ID = Liveblocks room ID: client generates `slugify(name)-<6-char suffix>` and sends it as `id` to `POST /api/projects`. Project lists are read server-side via `lib/projects.ts` and passed as props; client mutations call the API then `router.refresh()`/`push()` (no client-side project store).
 - Collaborator identity: DB stores emails only; display name/avatar resolved per request from Clerk Backend API (`lib/collaborators.ts`), never persisted. Collaborator list read allowed for owner + collaborators; invite/remove owner-only.
+- Liveblocks auth: access tokens (not ID tokens). `POST /api/liveblocks-auth` checks project membership via `getAccessibleProject`, ensures the room exists with `defaultAccesses: []` (private), and grants access to that single room only. Server client only via `getLiveblocks()` from `lib/liveblocks.ts`. User color derived from user ID, never stored.
+- Canvas: Liveblocks providers mounted per workspace in `CanvasRoom` (client), not in the root layout. React Flow state lives only in Liveblocks Storage (`flow` key via `useLiveblocksFlow`); no local node/edge state.
 - App is dark-only: theme tokens live in `:root`/`.dark` (kept identical) in `app/globals.css`, and `<html>` carries a permanent `dark` class rather than a toggle.
 
 ## Session Notes
